@@ -34,17 +34,51 @@ static void __init test_stack(void)
     assert(stack_empty(&data_stack));
 }
 
-static void __init print_processes_backwards(void)
+static int __init print_processes_backwards(void)
 {
-    // TODO
+    int ret = 0;
+    LIST_HEAD(processes_stack);
+    struct task_struct *tsk;
+
+    for_each_process(tsk) {
+        stack_entry_t *entry;
+        char *comm_buf = kmalloc(sizeof(tsk->comm), GFP_KERNEL);
+
+        if (!comm_buf) {
+            ret = -ENOMEM;
+            break;
+        }
+        get_task_comm(comm_buf, tsk);
+        entry = create_stack_entry(comm_buf);
+        if (!entry) {
+            ret = -ENOMEM;
+            break;
+        }
+        stack_push(&processes_stack, entry);
+    }
+
+    while (!stack_empty(&processes_stack)) {
+        stack_entry_t *entry;
+        char *comm_buf;
+
+        entry = stack_pop(&processes_stack);
+        comm_buf = STACK_ENTRY_DATA(entry, char *);
+        delete_stack_entry(entry);
+        if (!ret) {
+            printk(KERN_ALERT "%s\n", comm_buf);
+        }
+
+        kfree(comm_buf);
+    }
+
+    return ret;
 }
 
 static int __init ll_init(void)
 {
     printk(KERN_ALERT "Hello, linked_lists\n");
     test_stack();
-    print_processes_backwards();
-    return 0;
+    return print_processes_backwards();
 }
 
 static void __exit ll_exit(void)
