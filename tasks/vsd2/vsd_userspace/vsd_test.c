@@ -43,6 +43,16 @@ static void run_one_test(off_t vsd_offset, size_t vsd_size) {
     free(vsd_rw_buf);
 }
 
+static void run_offset_test(size_t vsd_size, size_t page_size)
+{
+    TEST(vsd_mmap(42) == MAP_FAILED);
+    TEST(vsd_mmap(vsd_size - 1) == MAP_FAILED);
+    TEST(vsd_mmap(vsd_size) == MAP_FAILED);
+    char* vsd_mem = vsd_mmap(vsd_size - page_size);
+    TEST(vsd_mem != MAP_FAILED);
+    TEST(!vsd_munmap(vsd_mem, vsd_size - page_size));
+}
+
 int main()
 {
     TEST(!vsd_init());
@@ -51,6 +61,7 @@ int main()
     size_t vsd_size = 0;
     TEST(!vsd_get_size(&vsd_size));
 
+    run_offset_test(vsd_size, PAGE_SIZE);
     run_one_test(0, vsd_size);
     run_one_test(PAGE_SIZE, vsd_size - PAGE_SIZE);
 
